@@ -45,8 +45,6 @@ jobs:
       - name: Run tests
         run: pytest tests/unit --cov=services --cov-report=xml
         env:
-          SIMULATE_FAILURE: ${{ env.SIMULATE_FAILURE }}
-          FAILURE_SCENARIO: ${{ env.FAILURE_SCENARIO }}
           PYTHONPATH: "."
           DATABASE_URL: "sqlite:///:memory:"
           REDIS_URL: "redis://localhost:6379/0"
