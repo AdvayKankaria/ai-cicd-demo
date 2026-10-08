@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from services.api.routes import health, products, orders, users
+
 from services.api.config import settings
+from services.api.routes import health, orders, products, users
 
 app = FastAPI(title="Order Management Platform", version=settings.APP_VERSION)
 

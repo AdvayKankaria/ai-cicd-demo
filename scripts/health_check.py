@@ -1,7 +1,8 @@
-import httpx
+import os
 import sys
 import time
-import os
+
+import httpx
 
 API_URL = os.getenv("API_URL", "http://localhost:8001")
 MAX_ATTEMPTS = 12
@@ -15,7 +16,7 @@ def check_health():
             if r.status_code == 200 and r.json().get("status") == "healthy":
                 print("Health check passed.")
                 return 0
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         print(f"Attempt {attempt} failed. Retrying in {ATTEMPT_DELAY}s...")
         time.sleep(ATTEMPT_DELAY)

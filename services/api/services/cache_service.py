@@ -1,4 +1,5 @@
 import json
+
 from services.api.database import get_redis
 
 
@@ -8,7 +9,7 @@ def get_cached_products():
         cached = redis_client.get("products")
         if cached:
             return json.loads(cached)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         import logging
 
         logging.getLogger(__name__).warning(f"Cache get error: {e}")
@@ -22,7 +23,7 @@ def set_cached_products(products_data):
             redis_client.delete("products")
         else:
             redis_client.set("products", json.dumps(products_data), ex=300)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         import logging
 
         logging.getLogger(__name__).warning(f"Cache set error: {e}")

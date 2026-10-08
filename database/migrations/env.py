@@ -1,18 +1,18 @@
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-from alembic import context
 import os
 import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "../..")))
 
+from services.api.config import settings
 from services.api.database import Base
-from services.api.models.user import User  # noqa: F401
-from services.api.models.product import Product  # noqa: F401
 from services.api.models.order import Order  # noqa: F401
 from services.api.models.order_item import OrderItem  # noqa: F401
-from services.api.config import settings
+from services.api.models.product import Product  # noqa: F401
+from services.api.models.user import User  # noqa: F401
 
 config = context.config
 

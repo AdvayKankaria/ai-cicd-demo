@@ -1,10 +1,10 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from services.api.main import app
-from services.api.database import Base, get_db, get_redis
-
 from sqlalchemy.pool import StaticPool
+
+from services.api.database import Base, get_db, get_redis
+from services.api.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(

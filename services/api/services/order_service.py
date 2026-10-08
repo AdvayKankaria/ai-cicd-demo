@@ -1,12 +1,14 @@
 import json
-from sqlalchemy.orm import Session
+
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from services.api.config import settings
+from services.api.database import get_redis
 from services.api.models.order import Order
 from services.api.models.order_item import OrderItem
 from services.api.models.product import Product
 from services.api.schemas.order import OrderCreate
-from services.api.database import get_redis
-from services.api.config import settings
 
 
 def create_order_service(db: Session, order_data: OrderCreate):
@@ -52,7 +54,7 @@ def create_order_service(db: Session, order_data: OrderCreate):
         redis_client = get_redis()
         job_data = {"order_id": db_order.id}
         redis_client.lpush("order_queue", json.dumps(job_data))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         import logging
 
         logging.getLogger(__name__).warning(
