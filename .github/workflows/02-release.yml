@@ -23,6 +23,9 @@ concurrency:
   group: production-release
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   validation:
     runs-on: ubuntu-latest

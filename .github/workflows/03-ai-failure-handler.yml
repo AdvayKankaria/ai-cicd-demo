@@ -4,6 +4,10 @@ on:
     workflows: ["Production Release"]
     types: [completed]
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   handle-failure:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}

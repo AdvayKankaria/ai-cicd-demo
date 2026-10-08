@@ -3,9 +3,9 @@ import json
 import logging
 from services.api.database import get_redis, SessionLocal
 from services.api.models.order import Order
-from services.api.models.user import User # noqa: F401
-from services.api.models.product import Product # noqa: F401
-from services.api.models.order_item import OrderItem # noqa: F401
+from services.api.models.user import User  # noqa: F401
+from services.api.models.product import Product  # noqa: F401
+from services.api.models.order_item import OrderItem  # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
