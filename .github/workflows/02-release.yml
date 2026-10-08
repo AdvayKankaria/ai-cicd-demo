@@ -166,14 +166,14 @@ jobs:
           fi
       - name: Sonatype Lifecycle Scan
         if: ${{ steps.check_creds.outputs.has_creds == 'true' }}
-        uses: sonatype/nexus-iq-github-action@v1
+        uses: sonatype/actions/evaluate@v1
         with:
-          serverUrl: ${{ secrets.SONATYPE_IQ_SERVER_URL }}
+          iq-server-url: ${{ secrets.SONATYPE_IQ_SERVER_URL }}
           username: ${{ secrets.SONATYPE_USERNAME }}
           password: ${{ secrets.SONATYPE_PASSWORD }}
-          applicationId: ${{ secrets.SONATYPE_APPLICATION_ID }}
+          application-id: ${{ secrets.SONATYPE_APPLICATION_ID }}
           stage: build
-          target: requirements.txt
+          scan-targets: requirements.txt
 
   security:
     needs: [build]
