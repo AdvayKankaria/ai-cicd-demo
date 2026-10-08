@@ -40,6 +40,8 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Run Unit Tests
         run: pytest tests/unit --cov=services --cov-report=xml
+        env:
+          PYTHONPATH: .
 
   integration-tests:
     needs: [unit-tests]
@@ -55,6 +57,8 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Run Integration Tests
         run: pytest tests/integration
+        env:
+          PYTHONPATH: .
 
   security:
     needs: [integration-tests]
