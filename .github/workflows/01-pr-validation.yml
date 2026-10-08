@@ -2,6 +2,20 @@ name: PR Validation
 on:
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      failure_scenario:
+        description: 'Simulate a failure scenario'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - test_failure
+          - sonarqube_failure
+          - fortify_failure
+          - sonatype_failure
+          - sysdig_failure
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -38,6 +52,11 @@ jobs:
           python-version: "3.12"
           cache: "pip"
       - run: pip install -r requirements-dev.txt
+      - name: Inject test failure
+        if: ${{ inputs.failure_scenario == 'test_failure' || github.event.inputs.failure_scenario == 'test_failure' }}
+        run: |
+          echo "SIMULATE_FAILURE=true" >> $GITHUB_ENV
+          echo "FAILURE_SCENARIO=test_failure" >> $GITHUB_ENV
       - name: Run Unit Tests
         run: pytest tests/unit --cov=services --cov-report=xml
         env:
@@ -64,6 +83,100 @@ jobs:
           DATABASE_URL: "sqlite:///:memory:"
           REDIS_URL: "redis://localhost:6379/0"
 
+  sonarqube:
+    needs: [integration-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject SonarQube failure
+        if: ${{ inputs.failure_scenario == 'sonarqube_failure' || github.event.inputs.failure_scenario == 'sonarqube_failure' }}
+        run: |
+          echo "FAILURE_STAGE=SONARQUBE"
+          echo "FAILURE_CLASS=CODE_QUALITY"
+          echo "FAILURE_REASON=SONARQUBE_POLICY_FAILURE"
+          exit 1
+      - name: Check Credentials
+        id: check_creds
+        run: |
+          if [ -n "${{ secrets.SONAR_TOKEN }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "MODE: REAL"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "TOOL: SonarQube"
+            echo "MODE: DEMO"
+            echo "Credentials missing. Simulating SonarQube stage completion."
+          fi
+      - name: SonarQube Scan Official
+        if: ${{ steps.check_creds.outputs.has_creds == 'true' }}
+        uses: SonarSource/sonarqube-scan-action@v3
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  fortify:
+    needs: [integration-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject Fortify failure
+        if: ${{ inputs.failure_scenario == 'fortify_failure' || github.event.inputs.failure_scenario == 'fortify_failure' }}
+        run: |
+          echo "FAILURE_STAGE=FORTIFY"
+          echo "FAILURE_CLASS=SAST"
+          echo "FAILURE_REASON=FORTIFY_POLICY_FAILURE"
+          exit 1
+      - name: Check Credentials
+        id: check_creds
+        run: |
+          if [ -n "${{ secrets.FORTIFY_TOKEN }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "MODE: REAL"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "TOOL: Fortify"
+            echo "MODE: DEMO"
+          fi
+      - name: Fortify Scan Official
+        if: ${{ steps.check_creds.outputs.has_creds == 'true' }}
+        uses: fortify/github-action@v1
+        with:
+          sast-scan: true
+
+  sonatype:
+    needs: [integration-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject Sonatype failure
+        if: ${{ inputs.failure_scenario == 'sonatype_failure' || github.event.inputs.failure_scenario == 'sonatype_failure' }}
+        run: |
+          echo "FAILURE_STAGE=SONATYPE"
+          echo "FAILURE_CLASS=DEPENDENCY_SECURITY"
+          echo "FAILURE_REASON=SONATYPE_POLICY_FAILURE"
+          exit 1
+      - name: Check Credentials
+        id: check_creds
+        run: |
+          if [ -n "${{ secrets.SONATYPE_USERNAME }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "MODE: REAL"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "TOOL: Sonatype Lifecycle"
+            echo "MODE: DEMO"
+          fi
+      - name: Sonatype Lifecycle Scan
+        if: ${{ steps.check_creds.outputs.has_creds == 'true' }}
+        uses: sonatype/nexus-iq-github-action@v1
+        with:
+          serverUrl: ${{ secrets.SONATYPE_IQ_SERVER_URL }}
+          username: ${{ secrets.SONATYPE_USERNAME }}
+          password: ${{ secrets.SONATYPE_PASSWORD }}
+          applicationId: ${{ secrets.SONATYPE_APPLICATION_ID }}
+          stage: build
+          target: requirements.txt
+
   security:
     needs: [integration-tests]
     runs-on: ubuntu-latest
@@ -81,7 +194,7 @@ jobs:
         run: pip-audit -r requirements.txt
 
   codeql:
-    needs: [security]
+    needs: [integration-tests]
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -95,7 +208,7 @@ jobs:
         uses: github/codeql-action/analyze@v3
 
   docker:
-    needs: [codeql]
+    needs: [sonarqube, fortify, sonatype, security, codeql]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -121,8 +234,67 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
+  sysdig:
+    needs: [docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build local image for Sysdig
+        run: docker build -t temp-api -f docker/api.Dockerfile .
+      - name: Inject Sysdig failure
+        if: ${{ inputs.failure_scenario == 'sysdig_failure' || github.event.inputs.failure_scenario == 'sysdig_failure' }}
+        run: |
+          echo "FAILURE_STAGE=SYSDIG"
+          echo "FAILURE_CLASS=CONTAINER_SECURITY"
+          echo "FAILURE_REASON=SYSDIG_POLICY_FAILURE"
+          exit 1
+      - name: Check Credentials
+        id: check_creds
+        run: |
+          if [ -n "${{ secrets.SYSDIG_SECURE_TOKEN }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "MODE: REAL"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "TOOL: Sysdig Secure"
+            echo "MODE: DEMO"
+          fi
+      - name: Sysdig Secure Inline Scan
+        if: ${{ steps.check_creds.outputs.has_creds == 'true' }}
+        uses: sysdiglabs/scan-action@v4
+        with:
+          image-tag: temp-api
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          sysdig-secure-url: ${{ secrets.SYSDIG_SECURE_URL }}
+
+  enterprise-security-gate:
+    needs: [sonarqube, fortify, sonatype, trivy, sysdig, codeql, security]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate Dependencies
+        run: |
+          echo "### Enterprise Security Gate Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Tool | Purpose | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| SonarQube | Code Quality | ${{ needs.sonarqube.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fortify | SAST | ${{ needs.fortify.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sonatype | Dependency Security | ${{ needs.sonatype.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy | Container CVE | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sysdig | Container Security | ${{ needs.sysdig.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL | SAST | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bandit | Python Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| pip-audit | Dependency Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" || "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "### Overall Enterprise Security Gate: FAIL" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "### Overall Enterprise Security Gate: PASS" >> $GITHUB_STEP_SUMMARY
+          fi
+
   pr-release-gate:
-    needs: [trivy]
+    needs: [enterprise-security-gate]
     runs-on: ubuntu-latest
     steps:
       - run: echo "All checks passed. Ready for release."

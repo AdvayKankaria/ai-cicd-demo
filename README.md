@@ -44,8 +44,17 @@ Artifacts are built once. The same immutable Docker image digest is promoted thr
 Docker images are built tagged with the commit SHA and pushed to GHCR. Downstream environments deploy the exact image digest to eliminate drift.
 
 ## 10 Security controls
-Pipeline includes Trivy container scanning, pip-audit for dependency vulnerability, Bandit for static code analysis, and CodeQL. Secrets are managed securely by GitHub, avoiding hardcoded credentials.
+The pipeline integrates a unified **Enterprise Security Gate** encompassing 8 enterprise-grade tools:
+- **Trivy** (REAL) - Container CVE scanning
+- **CodeQL** (REAL) - SAST
+- **Bandit** (REAL) - Python Code Analysis
+- **pip-audit** (REAL) - Dependency checking
+- **SonarQube** (DEMO/REAL) - Code Quality
+- **Fortify** (DEMO/REAL) - SAST
+- **Sonatype Lifecycle** (DEMO/REAL) - Dependency Security
+- **Sysdig Secure** (DEMO/REAL) - Container Security
 
+Tools marked as DEMO/REAL natively detect missing credentials and fallback to a simulated success mode while logging their status, rather than failing the pipeline. Secrets are managed securely by GitHub, avoiding hardcoded credentials.
 ## 11 AI failure detection
 A `workflow_run` action triggers whenever the Release pipeline fails, collecting logs, branch info, commit SHAs, and failure stages to send to the AI Engine in a structured JSON payload.
 
@@ -99,6 +108,7 @@ This repository separates **REAL** CI/CD configurations from **SIMULATED** cloud
 - Pull Request Branch Protections
 - Tests, Linting, formatting
 - Security Scans (CodeQL, Trivy, Bandit, pip-audit)
+- Enterprise Gate Integrations (SonarQube, Fortify, Sonatype, Sysdig)
 - Docker builds and GHCR pushing
 - Artifact passing via image digests
 - GitHub Environments and Approvals

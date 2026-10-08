@@ -56,3 +56,36 @@ This runbook contains exact Git commands and GitHub UI actions to demonstrate th
 5. The `prod-canary` job will fail.
 6. The failure handler triggers an automatic rollback mechanism (`scripts/rollback.py`) simulating restoring the previous artifact digest and verifying health.
 7. The release is aborted, preventing production outages.
+
+## Enterprise Security Tools
+
+This repository is integrated with 8 enterprise-grade security and quality gates. These gates evaluate the codebase, dependencies, and container images before any deployment can proceed.
+
+### Tool Overview & Mode Status
+
+The pipeline supports dual modes for enterprise vendors:
+* **REAL MODE**: The scanner actively evaluates the code and enforces policies. Requires vendor credentials.
+* **DEMO MODE**: The scanner simulates a successful run and clearly logs its demo status. Used when vendor credentials are unavailable.
+
+| Tool | Purpose | Current Mode | Failure Scenario Trigger |
+|---|---|---|---|
+| **SonarQube** | Code Quality (SAST, Coverage) | DEMO | `sonarqube_failure` |
+| **Fortify** | Static Application Security Testing (SAST) | DEMO | `fortify_failure` |
+| **Sonatype Lifecycle** | Dependency Security | DEMO | `sonatype_failure` |
+| **Sysdig Secure** | Container Vulnerability Scanning | DEMO | `sysdig_failure` |
+| **Trivy** | Container CVE Scanning | REAL | `security_failure` |
+| **CodeQL** | SAST & Vulnerability Scanning | REAL | *N/A* |
+| **Bandit** | Python AST Security Scanning | REAL | *N/A* |
+| **pip-audit** | Python Dependency Security | REAL | *N/A* |
+
+### Unified Enterprise Security Gate
+
+All 8 tools feed their results into a centralized **Enterprise Security Gate**. This gate aggregates the results and presents a unified GitHub Step Summary table. If any of the 8 tools report a failure or are cancelled, the Enterprise Gate fails the pipeline and prevents downstream deployment.
+
+### Simulating Vendor Failures
+
+You can trigger a simulated failure for any of the demo tools via `workflow_dispatch` (UI). When triggered:
+1. The simulated tool logs a `FAILURE_STAGE`, `FAILURE_CLASS`, and `FAILURE_REASON`.
+2. The specific job fails gracefully.
+3. The Unified Security Gate detects the failure and halts the release.
+4. The AI Failure Handler scrapes the payload for automated remediation.
