@@ -4,16 +4,22 @@ This runbook contains exact Git commands and GitHub UI actions to demonstrate th
 
 ## DEMO 1: Normal release
 **Goal:** Demonstrate a clean, successful pipeline run through PROD.
-**Steps:**
+
+**Option A: Trigger via CLI**
 1. Execute locally:
    ```bash
    git checkout main
    git commit --allow-empty -m "chore: trigger normal release"
    git push origin main
    ```
-2. Navigate to the GitHub UI -> **Actions** tab.
+
+**Option B: Trigger via GitHub UI**
+1. Navigate to the GitHub UI -> **Actions** tab -> **Production Release**.
+2. Click **Run workflow**, leave the dropdown at `none`, and click **Run workflow**.
+
+**Observation Steps (For both options):**
 3. Observe the `Production Release` workflow running.
-4. It will pause at `PROD-APPROVAL`.
+4. It will pause at `prod-approval` (the Release Gate).
 5. Click **Review deployments** and approve the production deployment.
 6. The pipeline resumes, deploys the canary, promotes, and succeeds.
 
