@@ -39,7 +39,7 @@ jobs:
           cache: "pip"
       - run: pip install -r requirements-dev.txt
       - name: Run Unit Tests
-        run: pytest tests/unit services/api/tests services/worker/tests --cov=services --cov-report=xml
+        run: pytest tests/unit --cov=services --cov-report=xml
 
   integration-tests:
     needs: [unit-tests]
