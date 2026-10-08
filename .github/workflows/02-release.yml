@@ -72,6 +72,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Run Pytest with Coverage
+        run: pytest tests/unit --cov=services --cov-report=xml
+        env:
+          PYTHONPATH: "."
+          DATABASE_URL: "sqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379/0"
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: "https://sonarcloud.io"
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: SonarSource/sonarqube-quality-gate-action@v1.1.0
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: "https://sonarcloud.io"
+      - name: Handle Quality Gate Failure
+        if: failure() && steps.sonarqube-quality-gate-check.outcome == 'failure'
+        run: |
+          echo "FAILURE_STAGE=SONARQUBE"
+          echo "FAILURE_CLASS=CODE_QUALITY"
+          echo "FAILURE_REASON=SONARQUBE_QUALITY_GATE"
+          exit 1
       - name: Inject SonarQube failure
         if: ${{ inputs.failure_scenario == 'sonarqube_failure' || github.event.inputs.failure_scenario == 'sonarqube_failure' }}
         run: |
@@ -79,24 +111,6 @@ jobs:
           echo "FAILURE_CLASS=CODE_QUALITY"
           echo "FAILURE_REASON=SONARQUBE_POLICY_FAILURE"
           exit 1
-      - name: Check Credentials
-        id: check_creds
-        run: |
-          if [ -n "${{ secrets.SONAR_TOKEN }}" ]; then
-            echo "has_creds=true" >> $GITHUB_OUTPUT
-            echo "MODE: REAL"
-          else
-            echo "has_creds=false" >> $GITHUB_OUTPUT
-            echo "TOOL: SonarQube"
-            echo "MODE: DEMO"
-            echo "Credentials missing. Simulating SonarQube stage completion."
-          fi
-      - name: SonarQube Scan Official
-        if: ${{ steps.check_creds.outputs.has_creds == 'true' }}
-        uses: SonarSource/sonarqube-scan-action@v3
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   fortify:
     needs: [build]
