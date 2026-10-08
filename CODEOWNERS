@@ -1,0 +1,7 @@
+* @AdvayKankaria
+.github/workflows/* @AdvayKankaria
+Dockerfile @AdvayKankaria
+docker/* @AdvayKankaria
+deployment/* @AdvayKankaria
+database/migrations/* @AdvayKankaria
+scripts/* @AdvayKankaria

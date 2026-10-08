@@ -1,0 +1,119 @@
+name: PR Validation
+on:
+  pull_request:
+    branches: [ main ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install ruff
+      - name: Ruff Check
+        run: ruff check .
+      - name: Ruff Format
+        run: ruff format --check .
+
+  unit-tests:
+    needs: [code-quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -r requirements-dev.txt
+      - name: Run Unit Tests
+        run: pytest tests/unit services/api/tests services/worker/tests --cov=services --cov-report=xml
+
+  integration-tests:
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -r requirements-dev.txt
+      - name: Run Integration Tests
+        run: pytest tests/integration
+
+  security:
+    needs: [integration-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install bandit pip-audit
+      - name: Bandit Security Scan
+        run: bandit -r services/
+      - name: Pip Audit
+        run: pip-audit -r requirements.txt
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+
+  codeql:
+    needs: [security]
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  docker:
+    needs: [codeql]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Build Config
+        run: docker compose config
+      - name: Docker Build (dry run)
+        run: docker compose build
+
+  trivy:
+    needs: [docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build local image for Trivy
+        run: docker build -t temp-api -f docker/api.Dockerfile .
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'temp-api'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  pr-release-gate:
+    needs: [trivy]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All checks passed. Ready for release."

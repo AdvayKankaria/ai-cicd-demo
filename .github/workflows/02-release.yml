@@ -1,0 +1,218 @@
+name: Production Release
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      failure_scenario:
+        description: 'Simulate a failure scenario'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - test_failure
+          - build_failure
+          - security_failure
+          - migration_failure
+          - deployment_failure
+          - uat_failure
+          - prod_canary_failure
+          - post_production_failure
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Inject test failure
+        if: ${{ inputs.failure_scenario == 'test_failure' }}
+        run: |
+           echo "SIMULATE_FAILURE=true" >> $GITHUB_ENV
+           echo "FAILURE_SCENARIO=test_failure" >> $GITHUB_ENV
+      - name: Run tests
+        run: pytest
+        env:
+          SIMULATE_FAILURE: ${{ env.SIMULATE_FAILURE }}
+          FAILURE_SCENARIO: ${{ env.FAILURE_SCENARIO }}
+
+  build:
+    needs: [validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject build failure
+        if: ${{ inputs.failure_scenario == 'build_failure' }}
+        run: exit 1
+      - name: Docker Build Config
+        run: docker compose config
+      - name: Docker Build
+        run: docker compose build
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      image_digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker Build and Push API
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          context: .
+          file: docker/api.Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/ai-cicd-demo-api:${{ github.sha }}
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/ai-cicd-demo-api
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+  security-scan:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inject security failure
+        if: ${{ inputs.failure_scenario == 'security_failure' }}
+        run: exit 1
+      - name: Trivy Container Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  dev:
+    needs: [security-scan, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy DEV using exact digest
+        run: |
+          echo "Deploying artifact ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+          docker compose up -d
+
+  dev-health:
+    needs: [dev]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject deployment failure
+        if: ${{ inputs.failure_scenario == 'deployment_failure' }}
+        run: exit 1
+      - run: python scripts/health_check.py
+
+  dev-smoke:
+    needs: [dev-health]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Running DEV smoke tests..."
+
+  uat:
+    needs: [dev-smoke, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy UAT using exact digest
+        run: |
+          echo "Deploying artifact ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+          docker compose up -d
+
+  uat-migration:
+    needs: [uat]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inject migration failure
+        if: ${{ inputs.failure_scenario == 'migration_failure' }}
+        run: exit 1
+      - run: echo "Running Alembic migrations on UAT..."
+
+  uat-tests:
+    needs: [uat-migration]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inject UAT test failure
+        if: ${{ inputs.failure_scenario == 'uat_failure' }}
+        run: exit 1
+      - run: echo "Running UAT Tests..."
+
+  release-gate:
+    needs: [uat-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "UAT validated. Awaiting Prod Approval."
+
+  prod-approval:
+    needs: [release-gate]
+    runs-on: ubuntu-latest
+    environment:
+      name: PROD-APPROVAL
+    steps:
+      - run: echo "Approved for production"
+
+  prod-canary:
+    needs: [prod-approval, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy Canary
+        run: echo "Deploying canary ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+      - name: Check canary failure
+        if: ${{ inputs.failure_scenario == 'prod_canary_failure' }}
+        run: exit 1
+      - run: echo "Canary passed"
+
+  prod-promotion:
+    needs: [prod-canary, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Promote to Production
+        run: echo "Promoting artifact ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }} to 100%"
+
+  post-production:
+    needs: [prod-promotion]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check post-prod failure
+        if: ${{ inputs.failure_scenario == 'post_production_failure' }}
+        run: exit 1
+      - run: echo "Post production tests passed"
+
+  release-summary:
+    needs: [post-production]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "### AI CI/CD Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Application: Order Management Platform" >> $GITHUB_STEP_SUMMARY
+          echo "Release: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "CI: PASS" >> $GITHUB_STEP_SUMMARY

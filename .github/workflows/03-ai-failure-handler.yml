@@ -1,0 +1,58 @@
+name: AI Failure Handler
+on:
+  workflow_run:
+    workflows: ["Production Release"]
+    types: [completed]
+
+jobs:
+  handle-failure:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Gather Failure Context
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID="${{ github.event.workflow_run.id }}"
+          
+          # Use GitHub CLI to get jobs that failed
+          FAILED_JOBS=$(gh api repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs --jq '[.jobs[] | select(.conclusion == "failure") | .name]')
+          
+          # Simulated log extraction (In a real scenario, we'd use gh run view $RUN_ID --log-failed)
+          FAILED_LOGS="Logs extracted from failed jobs via gh run view $RUN_ID --log-failed"
+          
+          # Create the JSON payload
+          cat <<EOF > failure_payload.json
+          {
+            "repository": "${{ github.repository }}",
+            "workflow": "${{ github.event.workflow_run.name }}",
+            "run_id": "${RUN_ID}",
+            "run_attempt": "${{ github.event.workflow_run.run_attempt }}",
+            "branch": "${{ github.event.workflow_run.head_branch }}",
+            "commit_sha": "${{ github.event.workflow_run.head_sha }}",
+            "run_url": "${{ github.event.workflow_run.html_url }}",
+            "failed_jobs": $FAILED_JOBS,
+            "failed_steps": [],
+            "logs": "$FAILED_LOGS"
+          }
+          EOF
+          
+          echo "Generated payload:"
+          cat failure_payload.json
+
+      - name: Call AI Engine API
+        env:
+          AI_ENGINE_URL: ${{ secrets.AI_ENGINE_URL }}
+          AI_ENGINE_TOKEN: ${{ secrets.AI_ENGINE_TOKEN }}
+        run: |
+          if [ -z "$AI_ENGINE_URL" ]; then
+            echo "AI_ENGINE_URL not set, simulating API call."
+            exit 0
+          fi
+          
+          curl -X POST "$AI_ENGINE_URL" \
+            -H "Authorization: Bearer $AI_ENGINE_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @failure_payload.json

@@ -1,0 +1,28 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+actionlint
+
+# Coverage
+*.coverage
+.coverage.*
+.coverage
+
+# Test/cache
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+
+# Local tools
+actionlint
+
+# Environment
+.env
+
+# Virtual environment
+venv/
