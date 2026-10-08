@@ -1,11 +1,12 @@
-import time
 import json
 import logging
-from services.api.database import get_redis, SessionLocal
+import time
+
+from services.api.database import SessionLocal, get_redis
 from services.api.models.order import Order
-from services.api.models.user import User # noqa: F401
-from services.api.models.product import Product # noqa: F401
-from services.api.models.order_item import OrderItem # noqa: F401
+from services.api.models.order_item import OrderItem  # noqa: F401
+from services.api.models.product import Product  # noqa: F401
+from services.api.models.user import User  # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def process_order(order_id: int):
             order.status = "COMPLETED"
             db.commit()
             logger.info(f"Order {order_id} completed")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error(f"Error processing order {order_id}: {e}")
     finally:
         db.close()
@@ -37,7 +38,7 @@ def main():
                 _, data = job
                 job_data = json.loads(data)
                 process_order(job_data.get("order_id"))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Redis connection error: {e}")
             time.sleep(5)
 
