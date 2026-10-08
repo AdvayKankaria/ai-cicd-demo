@@ -112,3 +112,6 @@ This repository separates **REAL** CI/CD configurations from **SIMULATED** cloud
 - Real production observability metrics
 
 For a full demonstration guide, see `DEMO_RUNBOOK.md`.
+
+## 22 CI Pipeline Validation
+This section is added to trigger the first GitHub CI pipeline.
