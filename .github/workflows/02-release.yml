@@ -113,68 +113,52 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-  dev:
+  dev-deployment:
     needs: [security-scan, publish]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy DEV using exact digest
-        run: |
-          echo "Deploying artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
-          docker compose up -d
-
-  dev-health:
-    needs: [dev]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Inject deployment failure
         if: ${{ inputs.failure_scenario == 'deployment_failure' }}
         run: exit 1
-      - run: python scripts/health_check.py
-
-  dev-smoke:
-    needs: [dev-health]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Running DEV smoke tests..."
-
-  uat:
-    needs: [dev-smoke, publish]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy UAT using exact digest
+      - name: Deploy DEV
         run: |
           echo "Deploying artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
           docker compose up -d
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx
+      - name: DEV Health Check
+        run: python scripts/health_check.py
+      - name: DEV Smoke Tests
+        run: echo "Running DEV smoke tests..."
 
-  uat-migration:
-    needs: [uat]
+  uat-deployment:
+    needs: [dev-deployment, publish]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Deploy UAT
+        run: |
+          echo "Deploying artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+          docker compose up -d
       - name: Inject migration failure
         if: ${{ inputs.failure_scenario == 'migration_failure' }}
         run: exit 1
-      - run: echo "Running Alembic migrations on UAT..."
-
-  uat-tests:
-    needs: [uat-migration]
-    runs-on: ubuntu-latest
-    steps:
+      - name: UAT Migrations
+        run: echo "Running Alembic migrations on UAT..."
       - name: Inject UAT test failure
         if: ${{ inputs.failure_scenario == 'uat_failure' }}
         run: exit 1
-      - run: echo "Running UAT Tests..."
-
-  release-gate:
-    needs: [uat-tests]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "UAT validated. Awaiting Prod Approval."
+      - name: UAT Tests
+        run: echo "Running UAT Tests..."
+      - name: Release Gate
+        run: echo "UAT validated. Awaiting Prod Approval."
 
   prod-approval:
-    needs: [release-gate]
+    needs: [uat-deployment]
     runs-on: ubuntu-latest
     environment:
       name: PROD-APPROVAL
