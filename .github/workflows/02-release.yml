@@ -88,11 +88,11 @@ jobs:
           context: .
           file: docker/api.Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/ai-cicd-demo-api:${{ github.sha }}
+          tags: ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api:${{ github.sha }}
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ghcr.io/${{ github.repository }}/ai-cicd-demo-api
+          subject-name: ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
@@ -106,7 +106,7 @@ jobs:
       - name: Trivy Container Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}
+          image-ref: ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -120,7 +120,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deploy DEV using exact digest
         run: |
-          echo "Deploying artifact ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+          echo "Deploying artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
           docker compose up -d
 
   dev-health:
@@ -146,7 +146,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deploy UAT using exact digest
         run: |
-          echo "Deploying artifact ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+          echo "Deploying artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
           docker compose up -d
 
   uat-migration:
@@ -187,7 +187,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy Canary
-        run: echo "Deploying canary ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
+        run: echo "Deploying canary ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
       - name: Check canary failure
         if: ${{ inputs.failure_scenario == 'prod_canary_failure' }}
         run: exit 1
@@ -199,7 +199,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Promote to Production
-        run: echo "Promoting artifact ghcr.io/${{ github.repository }}/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }} to 100%"
+        run: echo "Promoting artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }} to 100%"
 
   post-production:
     needs: [prod-promotion]
