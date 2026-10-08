@@ -41,9 +41,9 @@ jobs:
       - name: Run Unit Tests
         run: pytest tests/unit --cov=services --cov-report=xml
         env:
-          PYTHONPATH: .
-          DATABASE_URL: sqlite:///:memory:
-          REDIS_URL: redis://localhost:6379/0
+          PYTHONPATH: "."
+          DATABASE_URL: "sqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379/0"
 
   integration-tests:
     needs: [unit-tests]
@@ -60,9 +60,9 @@ jobs:
       - name: Run Integration Tests
         run: pytest tests/integration
         env:
-          PYTHONPATH: .
-          DATABASE_URL: sqlite:///:memory:
-          REDIS_URL: redis://localhost:6379/0
+          PYTHONPATH: "."
+          DATABASE_URL: "sqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379/0"
 
   security:
     needs: [integration-tests]
