@@ -43,10 +43,13 @@ jobs:
            echo "SIMULATE_FAILURE=true" >> $GITHUB_ENV
            echo "FAILURE_SCENARIO=test_failure" >> $GITHUB_ENV
       - name: Run tests
-        run: pytest
+        run: pytest tests/unit --cov=services --cov-report=xml
         env:
           SIMULATE_FAILURE: ${{ env.SIMULATE_FAILURE }}
           FAILURE_SCENARIO: ${{ env.FAILURE_SCENARIO }}
+          PYTHONPATH: "."
+          DATABASE_URL: "sqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379/0"
 
   build:
     needs: [validation]
