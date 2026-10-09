@@ -29,11 +29,21 @@ def override_get_db():
 
 def override_get_redis():
     class MockRedis:
-        def get(self, key): return None
-        def set(self, key, val, ex=None): pass
-        def delete(self, key): pass
-        def lpush(self, key, val): pass
-        def ping(self): return True
+        def get(self, key):
+            return None
+
+        def set(self, key, val, ex=None):
+            pass
+
+        def delete(self, key):
+            pass
+
+        def lpush(self, key, val):
+            pass
+
+        def ping(self):
+            return True
+
     return MockRedis()
 
 
@@ -47,9 +57,10 @@ is_ai_fix_branch = os.getenv("GITHUB_HEAD_REF", "").startswith("ai-fix/")
 is_ai_run = os.getenv("GITHUB_REF_NAME", "").startswith("ai-fix/")
 should_run = is_duplicate_scenario or is_ai_fix_branch or is_ai_run
 
+
 @pytest.mark.skipif(
     not should_run,
-    reason="Only run this defect reproduction when duplicate_order_failure is selected or on ai-fix branches"
+    reason="Only run this defect reproduction when duplicate_order_failure is selected or on ai-fix branches",
 )
 def test_duplicate_order_idempotency_violation():
     """
@@ -58,40 +69,37 @@ def test_duplicate_order_idempotency_violation():
     Currently, the application contains a bug and will create TWO separate orders.
     """
     # Ensure a valid user and product exist
-    users_resp = client.post("/users/", json={"name": "Alice", "email": "alice_idem@example.com"})
+    users_resp = client.post(
+        "/users/", json={"name": "Alice", "email": "alice_idem@example.com"}
+    )
     user_id = users_resp.json()["id"]
 
     prod_resp = client.post("/products/", json={"name": "TestProduct", "price": 10.00})
     prod_id = prod_resp.json()["id"]
 
     idempotency_key = "idem-test-12345"
-    
+
     # First request
-    payload = {
-        "user_id": user_id,
-        "items": [{"product_id": prod_id, "quantity": 1}]
-    }
-    
+    payload = {"user_id": user_id, "items": [{"product_id": prod_id, "quantity": 1}]}
+
     response1 = client.post(
-        "/orders/", 
-        json=payload,
-        headers={"Idempotency-Key": idempotency_key}
+        "/orders/", json=payload, headers={"Idempotency-Key": idempotency_key}
     )
     assert response1.status_code == 200
     order1 = response1.json()
-    
+
     # Second request (duplicate)
     response2 = client.post(
-        "/orders/", 
-        json=payload,
-        headers={"Idempotency-Key": idempotency_key}
+        "/orders/", json=payload, headers={"Idempotency-Key": idempotency_key}
     )
     assert response2.status_code == 200
     order2 = response2.json()
-    
+
     try:
         # The expected behavior is that the same order is returned
-        assert order1["id"] == order2["id"], f"Expected same order ID {order1['id']} but got {order2['id']} for same Idempotency-Key"
+        assert (
+            order1["id"] == order2["id"]
+        ), f"Expected same order ID {order1['id']} but got {order2['id']} for same Idempotency-Key"
     except AssertionError as e:
         # Emit the exact diagnostic metadata expected by the AI Engine
         print("\n::error::Idempotency violation detected: duplicate orders created.")

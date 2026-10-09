@@ -11,7 +11,9 @@ from services.api.models.product import Product
 from services.api.schemas.order import OrderCreate
 
 
-def create_order_service(db: Session, order_data: OrderCreate, idempotency_key: str | None = None):
+def create_order_service(
+    db: Session, order_data: OrderCreate, idempotency_key: str | None = None
+):
     total_amount = 0.0
     items = []
 
@@ -37,7 +39,10 @@ def create_order_service(db: Session, order_data: OrderCreate, idempotency_key: 
         items.append(db_item)
 
     db_order = Order(
-        user_id=order_data.user_id, status="PENDING", total_amount=total_amount, idempotency_key=idempotency_key
+        user_id=order_data.user_id,
+        status="PENDING",
+        total_amount=total_amount,
+        idempotency_key=idempotency_key,
     )
     db.add(db_order)
     db.flush()  # get id

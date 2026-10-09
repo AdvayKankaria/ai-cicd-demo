@@ -16,7 +16,7 @@ router = APIRouter()
 def create_order(
     order: OrderCreate,
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return create_order_service(db, order, idempotency_key)
 

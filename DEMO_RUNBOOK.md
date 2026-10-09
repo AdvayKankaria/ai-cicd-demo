@@ -30,8 +30,8 @@ This runbook contains exact Git commands and GitHub UI actions to demonstrate th
 2. Click **Run workflow**.
 3. Select `test_failure` from the "Simulate a failure scenario" dropdown and click **Run workflow**.
 4. The workflow will fail at the `validation` job because the injected scenario modifies the code logic (price + quantity).
-5. The `AI Failure Handler` workflow automatically triggers upon failure.
-6. The AI Engine receives the payload, diagnoses the root cause, and pushes a fix branch `ai-fix/<run-id>`.
+5. The `AI Failure Handler` workflow generates and logs a failure payload.
+6. The Windows AI Engine (running locally and polling GitHub) detects the failure, parses the payload, diagnoses the root cause, and pushes a fix branch `ai-fix/<run-id>`.
 7. An AI-generated PR appears in the **Pull requests** tab.
 8. Review the PR. The `PR Validation` checks will run and pass.
 9. Approve and merge the PR.
@@ -44,7 +44,7 @@ This runbook contains exact Git commands and GitHub UI actions to demonstrate th
 2. Click **Run workflow**.
 3. Select `security_failure` from the dropdown and click **Run workflow**.
 4. The workflow will successfully build and publish the image, but fail at the `security-scan` job (Trivy scan).
-5. The AI Failure Handler triggers, diagnoses the vulnerable package, and creates a remediation PR bumping the version.
+5. The Windows AI Engine (polling) detects the failure, diagnoses the vulnerable package, and creates a remediation PR bumping the version.
 
 ## DEMO 4: Production canary failure
 **Goal:** Demonstrate automatic production rollback when a newly promoted release fails canary validation.
@@ -87,8 +87,8 @@ All 8 tools feed their results into a centralized **Enterprise Security Gate**. 
 You can trigger a simulated failure for any of the demo tools via `workflow_dispatch` (UI). When triggered:
 1. The simulated tool logs a `FAILURE_STAGE`, `FAILURE_CLASS`, and `FAILURE_REASON`.
 2. The specific job fails gracefully.
-9. The Unified Security Gate detects the failure and halts the release.
-4. The AI Failure Handler scrapes the payload for automated remediation.
+3. The Unified Security Gate detects the failure and halts the release.
+4. The Windows AI Engine (polling) detects the failure and scrapes the payload from the logs for automated remediation.
 
 ## DEMO 5: Transient failure automatic retry
 **Goal:** Demonstrate automatic AI retry for transient infrastructure issues.
