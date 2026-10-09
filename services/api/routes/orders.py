@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from services.api.database import get_db
@@ -13,8 +13,12 @@ router = APIRouter()
 
 
 @router.post("/", response_model=OrderResponse)
-def create_order(order: OrderCreate, db: Session = Depends(get_db)):
-    return create_order_service(db, order)
+def create_order(
+    order: OrderCreate,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    db: Session = Depends(get_db)
+):
+    return create_order_service(db, order, idempotency_key)
 
 
 @router.get("/", response_model=list[OrderResponse])

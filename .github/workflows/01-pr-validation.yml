@@ -12,6 +12,8 @@ on:
         options:
           - none
           - test_failure
+          - transient_failure_once
+          - duplicate_order_failure
           - sonarqube_failure
           - fortify_failure
           - sonatype_failure

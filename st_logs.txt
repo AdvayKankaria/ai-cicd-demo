@@ -1,0 +1,31 @@
+﻿2026-10-08T18:37:38.5739163Z Current runner version: '2.337.0'
+2026-10-08T18:37:38.5755351Z ##[group]Runner Image Provisioner
+2026-10-08T18:37:38.5755973Z Hosted Compute Agent
+2026-10-08T18:37:38.5756328Z Version: 20261002.596
+2026-10-08T18:37:38.5756860Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-08T18:37:38.5757334Z Build Date: 2026-10-02T22:28:27Z
+2026-10-08T18:37:38.5757740Z Worker ID: {5a791edd-04b7-454a-a925-2164a2244003}
+2026-10-08T18:37:38.5758185Z Region: centralus
+2026-10-08T18:37:38.5758531Z Cloud: Azure
+2026-10-08T18:37:38.5758858Z ##[endgroup]
+2026-10-08T18:37:38.5759702Z ##[group]Operating System
+2026-10-08T18:37:38.5760069Z Ubuntu
+2026-10-08T18:37:38.5760454Z 24.04.5
+2026-10-08T18:37:38.5760767Z LTS
+2026-10-08T18:37:38.5761071Z ##[endgroup]
+2026-10-08T18:37:38.5761475Z ##[group]Runner Image
+2026-10-08T18:37:38.5761833Z Image: ubuntu-24.04
+2026-10-08T18:37:38.5762194Z Version: 20261004.327.1
+2026-10-08T18:37:38.5762974Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-08T18:37:38.5763932Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-08T18:37:38.5764492Z ##[endgroup]
+2026-10-08T18:37:38.5765188Z ##[group]GITHUB_TOKEN Permissions
+2026-10-08T18:37:38.5766499Z Contents: read
+2026-10-08T18:37:38.5766997Z Metadata: read
+2026-10-08T18:37:38.5767392Z ##[endgroup]
+2026-10-08T18:37:38.5768691Z Secret source: Actions
+2026-10-08T18:37:38.5769305Z Cache mode: write
+2026-10-08T18:37:38.5769723Z Prepare workflow directory
+2026-10-08T18:37:38.5970039Z Prepare all required actions
+2026-10-08T18:37:38.6001181Z Getting action download info
+2026-10-08T18:37:38.8420157Z ##[error]Unable to resolve action sonatype/nexus-iq-github-action, repository not found

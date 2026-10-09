@@ -12,6 +12,8 @@ on:
         options:
           - none
           - test_failure
+          - transient_failure_once
+          - duplicate_order_failure
           - sonarqube_failure
           - fortify_failure
           - sonatype_failure
@@ -53,8 +55,29 @@ jobs:
           DATABASE_URL: "sqlite:///:memory:"
           REDIS_URL: "redis://localhost:6379/0"
 
-  build:
+  transient-failure-simulation:
     needs: [validation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inject transient failure once
+        if: ${{ inputs.failure_scenario == 'transient_failure_once' || github.event.inputs.failure_scenario == 'transient_failure_once' }}
+        run: |
+          if [ "${{ github.run_attempt }}" == "1" ]; then
+            echo "FAILURE_STAGE=TRANSIENT_FAILURE_SIMULATION"
+            echo "FAILURE_CLASS=TRANSIENT"
+            echo "FAILURE_REASON=TRANSIENT_FAILURE_ONCE"
+            echo "::error::Simulating a transient infrastructure failure on attempt 1."
+            exit 1
+          else
+            echo "TRANSIENT_FAILURE_RECOVERED=true"
+            echo "Attempt ${{ github.run_attempt }}: Transient failure has passed."
+          fi
+      - name: Pass otherwise
+        if: ${{ inputs.failure_scenario != 'transient_failure_once' && github.event.inputs.failure_scenario != 'transient_failure_once' }}
+        run: echo "No transient failure requested."
+
+  build:
+    needs: [transient-failure-simulation]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

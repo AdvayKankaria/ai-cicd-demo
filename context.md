@@ -64,6 +64,15 @@ The only remaining task before this project is fully realized is **integrating t
 
 Currently, `.github/workflows/03-ai-failure-handler.yml` gathers all the data and creates the `payload.json`, but stops short of actually transmitting it anywhere. 
 
+## 7. Added AI-Engine Remediation Scenarios
+To support advanced testing of the AI Engine, we have implemented two new demo scenarios in a feature branch (`feat/add-failure-scenarios`):
+
+**Transient Failure (Auto-Retry)**:
+The `transient_failure_once` scenario injects a simulated infrastructure failure in `02-release.yml`. It uses `github.run_attempt` to fail exactly on Attempt 1 with `FAILURE_CLASS=TRANSIENT`. On the second attempt (when the AI Engine triggers a workflow rerun via GitHub API), it automatically passes.
+
+**Application Defect (Idempotency Bug)**:
+The `duplicate_order_failure` scenario demonstrates a real-world codebase defect. The application's `/orders/` endpoint accepts an `Idempotency-Key` header and passes it to the service, but the service logic currently *fails to enforce uniqueness* or check for existing keys before creating the order. A strict regression test (`tests/integration/test_order_idempotency.py`) runs when this scenario is selected and successfully reproduces the bug by creating duplicate orders. This tests the AI Engine's ability to diagnose a codebase defect, write a fix (like an Alembic unique constraint and service check), and create a PR.
+
 **Next Steps for the AI Assistant on the Windows Machine:**
 1.  Acquire the `AI_ENGINE_URL` and `AI_ENGINE_TOKEN` from the user.
 2.  Inject these credentials into the repository secrets.
