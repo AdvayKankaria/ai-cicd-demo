@@ -14,6 +14,11 @@ from services.api.schemas.order import OrderCreate
 def create_order_service(
     db: Session, order_data: OrderCreate, idempotency_key: str | None = None
 ):
+    if idempotency_key:
+        existing = db.query(Order).filter(Order.idempotency_key == idempotency_key).first()
+        if existing:
+            return existing
+
     total_amount = 0.0
     items = []
 
