@@ -100,10 +100,10 @@ def test_duplicate_order_idempotency_violation():
         assert (
             order1["id"] == order2["id"]
         ), f"Expected same order ID {order1['id']} but got {order2['id']} for same Idempotency-Key"
-    except AssertionError as e:
+    except AssertionError:
         # Emit the exact diagnostic metadata expected by the AI Engine
         print("\n::error::Idempotency violation detected: duplicate orders created.")
         print("FAILURE_STAGE=APPLICATION_TESTS")
         print("FAILURE_CLASS=APPLICATION_BUG")
         print("FAILURE_REASON=IDEMPOTENCY_VIOLATION")
-        raise e
+        raise
