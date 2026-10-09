@@ -47,6 +47,8 @@ jobs:
           
       - name: Run Contract Tests
         if: ${{ contains(needs.parse-plan.outputs.test_suites, 'contract') && matrix.service == 'catalog' }}
+        env:
+          BREAK_CATALOG_CONTRACT: ${{ vars.BREAK_CATALOG_CONTRACT }}
         run: |
           echo "Running contract tests for catalog..."
           PYTHONPATH=. pytest tests/integration/test_catalog_contract.py
