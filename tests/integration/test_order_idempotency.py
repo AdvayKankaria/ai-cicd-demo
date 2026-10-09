@@ -97,9 +97,9 @@ def test_duplicate_order_idempotency_violation():
 
     try:
         # The expected behavior is that the same order is returned
-        assert (
-            order1["id"] == order2["id"]
-        ), f"Expected same order ID {order1['id']} but got {order2['id']} for same Idempotency-Key"
+        assert order1["id"] == order2["id"], (
+            f"Expected same order ID {order1['id']} but got {order2['id']} for same Idempotency-Key"
+        )
     except AssertionError:
         # Emit the exact diagnostic metadata expected by the AI Engine
         print("\n::error::Idempotency violation detected: duplicate orders created.")
