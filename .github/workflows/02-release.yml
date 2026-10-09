@@ -48,8 +48,19 @@ jobs:
         run: |
            echo "SIMULATE_FAILURE=true" >> $GITHUB_ENV
            echo "FAILURE_SCENARIO=test_failure" >> $GITHUB_ENV
+      - name: Inject duplicate order failure
+        if: ${{ inputs.failure_scenario == 'duplicate_order_failure' || github.event.inputs.failure_scenario == 'duplicate_order_failure' }}
+        run: |
+           echo "FAILURE_SCENARIO=duplicate_order_failure" >> $GITHUB_ENV
       - name: Run tests
         run: pytest tests/unit --cov=services --cov-report=xml
+        env:
+          PYTHONPATH: "."
+          DATABASE_URL: "sqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379/0"
+      - name: Run integration tests (Idempotency Bug)
+        if: ${{ inputs.failure_scenario == 'duplicate_order_failure' || github.event.inputs.failure_scenario == 'duplicate_order_failure' }}
+        run: pytest tests/integration/test_order_idempotency.py -s
         env:
           PYTHONPATH: "."
           DATABASE_URL: "sqlite:///:memory:"
