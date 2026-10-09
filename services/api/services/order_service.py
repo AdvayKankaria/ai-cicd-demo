@@ -38,6 +38,11 @@ def create_order_service(
         )
         items.append(db_item)
 
+    if idempotency_key:
+        existing = db.query(Order).filter(Order.idempotency_key == idempotency_key).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Order already exists")
+
     db_order = Order(
         user_id=order_data.user_id,
         status="PENDING",
