@@ -1,0 +1,95 @@
+name: KG Deployment Plan Executor
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_payload:
+        description: 'JSON string containing the deployment plan from the AI Engine KG'
+        required: true
+        type: string
+
+jobs:
+  parse-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.parse.outputs.services }}
+      test_suites: ${{ steps.parse.outputs.test_suites }}
+      waves: ${{ steps.parse.outputs.waves }}
+      mode: ${{ steps.parse.outputs.mode }}
+      wave_1_services: ${{ steps.parse.outputs.wave_1_services }}
+      wave_2_services: ${{ steps.parse.outputs.wave_2_services }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Parse and Validate Plan
+        id: parse
+        run: |
+          python3 .github/scripts/parse_plan.py '${{ inputs.plan_payload }}' '${{ github.sha }}'
+          
+  test-services:
+    needs: [parse-plan]
+    runs-on: ubuntu-latest
+    if: ${{ needs.parse-plan.outputs.services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.parse-plan.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Tests
+        run: |
+          pip install pytest fastapi uvicorn pydantic httpx
+          PYTHONPATH=. pytest tests/unit/services/test_${{ matrix.service }}.py
+          
+      - name: Run Contract Tests
+        if: ${{ contains(needs.parse-plan.outputs.test_suites, 'contract') && matrix.service == 'catalog' }}
+        run: |
+          echo "Running contract tests for catalog..."
+          PYTHONPATH=. pytest tests/integration/test_catalog_contract.py
+
+  build-services:
+    needs: [test-services, parse-plan]
+    runs-on: ubuntu-latest
+    if: ${{ needs.parse-plan.outputs.services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.parse-plan.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker Image
+        run: |
+          docker build -t ecom-${{ matrix.service }}:${{ github.sha }} -f docker/${{ matrix.service }}.Dockerfile .
+
+  deploy-wave-1:
+    needs: [build-services, parse-plan]
+    runs-on: ubuntu-latest
+    if: ${{ needs.parse-plan.outputs.wave_1_services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.parse-plan.outputs.wave_1_services) }}
+    steps:
+      - name: Deploy Service
+        run: |
+          echo "Deploying Wave 1 Service: ${{ matrix.service }} (Mode: ${{ needs.parse-plan.outputs.mode }})"
+          # Simulated deployment step
+          sleep 2
+          echo "Service ${{ matrix.service }} successfully deployed."
+
+  deploy-wave-2:
+    needs: [deploy-wave-1, parse-plan]
+    runs-on: ubuntu-latest
+    if: ${{ needs.parse-plan.outputs.wave_2_services != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.parse-plan.outputs.wave_2_services) }}
+    steps:
+      - name: Deploy Service
+        run: |
+          echo "Deploying Wave 2 Service: ${{ matrix.service }} (Mode: ${{ needs.parse-plan.outputs.mode }})"
+          # Simulated deployment step
+          sleep 2
+          echo "Service ${{ matrix.service }} successfully deployed."

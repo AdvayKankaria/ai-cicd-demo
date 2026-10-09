@@ -56,7 +56,7 @@ The pipeline integrates a unified **Enterprise Security Gate** encompassing 8 en
 
 Tools marked as DEMO/REAL natively detect missing credentials and fallback to a simulated success mode while logging their status, rather than failing the pipeline. Secrets are managed securely by GitHub, avoiding hardcoded credentials.
 ## 11 AI failure detection
-A `workflow_run` action triggers whenever the Release pipeline fails, collecting logs, branch info, commit SHAs, and failure stages to send to the AI Engine in a structured JSON payload.
+The Windows AI Engine polls the GitHub API to monitor workflow runs. When a pipeline fails, it autonomously retrieves logs, branch info, commit SHAs, and failure stages to diagnose the issue. There are no webhooks or inbound endpoints required.
 
 ## 12 AI remediation
 Based on the failure class (TEST_FAILURE, SECURITY_FAILURE, etc.), the AI engine decides the remediation path.
@@ -97,7 +97,7 @@ To fully operate this repository, you must manually perform the following steps 
    - Require a pull request before merging (minimum 1 approval).
    - Require status checks to pass (Select `pr-release-gate`).
    - Prevent force pushes.
-5. **Repository Secrets**: Go to Settings -> Secrets and variables -> Actions. Add `AI_ENGINE_URL` and `AI_ENGINE_TOKEN`.
+5. **Repository Secrets**: Ensure any required API tokens for demonstration tools are set. (Note: `AI_ENGINE_URL` and `AI_ENGINE_TOKEN` are NO LONGER required, as the engine polls GitHub directly using its own PAT).
 6. **Actions Permissions**: Go to Settings -> Actions -> General. Ensure "Read and write permissions" is selected so workflows can publish packages and push branches.
 7. **GHCR Permissions**: Go to your Profile -> Packages -> `ai-cicd-demo-api` -> Package Settings. Ensure the repository has Admin/Write access to the package.
 

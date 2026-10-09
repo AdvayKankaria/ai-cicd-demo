@@ -118,3 +118,25 @@ You can trigger a simulated failure for any of the demo tools via `workflow_disp
 7. The intended AI remediation flow is:
    `IDEMPOTENCY_VIOLATION → diagnose source code → create fix branch → implement application fix (e.g. adding unique constraints or service logic) → run regression tests → commit and push → open PR → wait for human review.`
 8. This should lead to `CREATE_FIX_PR`, not a blind workflow retry.
+
+## DEMO 7: Knowledge Graph (KG) Deployment Plan Validation
+**Goal:** Demonstrate the AI engine supplying a deployment plan with parallel independent work, deployment waves, and health checks, and demonstrate a breaking contract test blocking an unsafe deployment.
+**Steps:**
+1. Navigate to GitHub UI -> **Actions** tab -> **KG Deployment Plan Executor**.
+2. Click **Run workflow**.
+3. Supply a valid JSON deployment plan. For a successful run, provide:
+```json
+{
+  "schema_version": "1.0",
+  "plan_id": "plan-success",
+  "mode": "impacted_services",
+  "commit_sha": "<current-commit-sha>",
+  "services": ["catalog", "checkout"],
+  "test_suites": ["unit", "contract"],
+  "waves": [{"id": 1, "services": ["catalog"]}, {"id": 2, "services": ["checkout"]}]
+}
+```
+4. The workflow will parse the plan, execute unit and contract tests in parallel, build the images, and simulate a wave-based deployment.
+5. **To test the contract failure (unsafe deployment blocked):** Set `BREAK_CATALOG_CONTRACT=true` in the environment or GitHub Actions variables, and run the same plan again.
+6. The `test-services (catalog)` job will fail because the Catalog service broke its contract with the Checkout service (Simulated by the regression test failure `test_catalog_product_contract`).
+7. The dependent deployment waves will be skipped/blocked.

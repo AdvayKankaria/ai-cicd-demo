@@ -1,28 +1,42 @@
-venv/
+# Python
 __pycache__/
 *.pyc
-.env
-.pytest_cache/
-.coverage
-htmlcov/
-.ruff_cache/
-actionlint
+*.pyo
+*.pyd
 
-# Coverage
-*.coverage
-.coverage.*
-.coverage
-
-# Test/cache
-.pytest_cache/
-.ruff_cache/
-htmlcov/
-
-# Local tools
-actionlint
-
-# Environment
-.env
-
-# Virtual environment
+# Virtual Environments
 venv/
+env/
+.venv/
+
+# Environment Variables
+.env
+.env.local
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+*.coverage
+htmlcov/
+coverage.xml
+
+# Linters
+.ruff_cache/
+.mypy_cache/
+
+# Local tools & diagnostic logs
+actionlint
+payload.json
+sq_logs*.txt
+st_logs*.txt
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
