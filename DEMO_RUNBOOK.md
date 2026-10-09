@@ -30,8 +30,8 @@ This runbook contains exact Git commands and GitHub UI actions to demonstrate th
 2. Click **Run workflow**.
 3. Select `test_failure` from the "Simulate a failure scenario" dropdown and click **Run workflow**.
 4. The workflow will fail at the `validation` job because the injected scenario modifies the code logic (price + quantity).
-5. The `AI Failure Handler` workflow automatically triggers upon failure.
-6. The AI Engine receives the payload, diagnoses the root cause, and pushes a fix branch `ai-fix/<run-id>`.
+5. The `AI Failure Handler` workflow generates and logs a failure payload.
+6. The Windows AI Engine (running locally and polling GitHub) detects the failure, parses the payload, diagnoses the root cause, and pushes a fix branch `ai-fix/<run-id>`.
 7. An AI-generated PR appears in the **Pull requests** tab.
 8. Review the PR. The `PR Validation` checks will run and pass.
 9. Approve and merge the PR.
@@ -44,7 +44,7 @@ This runbook contains exact Git commands and GitHub UI actions to demonstrate th
 2. Click **Run workflow**.
 3. Select `security_failure` from the dropdown and click **Run workflow**.
 4. The workflow will successfully build and publish the image, but fail at the `security-scan` job (Trivy scan).
-5. The AI Failure Handler triggers, diagnoses the vulnerable package, and creates a remediation PR bumping the version.
+5. The Windows AI Engine (polling) detects the failure, diagnoses the vulnerable package, and creates a remediation PR bumping the version.
 
 ## DEMO 4: Production canary failure
 **Goal:** Demonstrate automatic production rollback when a newly promoted release fails canary validation.
@@ -88,4 +88,33 @@ You can trigger a simulated failure for any of the demo tools via `workflow_disp
 1. The simulated tool logs a `FAILURE_STAGE`, `FAILURE_CLASS`, and `FAILURE_REASON`.
 2. The specific job fails gracefully.
 3. The Unified Security Gate detects the failure and halts the release.
-4. The AI Failure Handler scrapes the payload for automated remediation.
+4. The Windows AI Engine (polling) detects the failure and scrapes the payload from the logs for automated remediation.
+
+## DEMO 5: Transient failure automatic retry
+**Goal:** Demonstrate automatic AI retry for transient infrastructure issues.
+**Steps:**
+1. Open the Production Release workflow in GitHub Actions.
+2. Select `transient_failure_once`.
+3. Start the workflow.
+4. Verify attempt 1 fails at `transient-failure-simulation`.
+5. Verify build and subsequent deployment jobs do not execute.
+6. Let my AI engine poll GitHub and identify the failure as `TRANSIENT`.
+7. The AI engine must invoke the GitHub API to rerun the entire workflow (using a full workflow rerun, not a failed-jobs-only rerun).
+8. Verify attempt 2 passes the transient failure job.
+9. Verify the remaining pipeline continues normally.
+10. Complete the required human production approval if the workflow reaches that gate.
+
+*Note for polling engine:* The polling engine must track `(workflow_run_id, run_attempt)` so it recognizes the retry as a new attempt rather than processing the original failure repeatedly. It should retry only when its policy classifies the failure as transient, with a maximum of two automatic retry attempts.
+
+## DEMO 6: Application Bug - Idempotency Violation
+**Goal:** Demonstrate AI diagnosis and remediation of a real application-level defect (Idempotency violation).
+**Steps:**
+1. Navigate to GitHub UI -> **Actions** tab -> **Production Release**.
+2. Click **Run workflow**.
+3. Select `duplicate_order_failure` from the dropdown and click **Run workflow**.
+4. The workflow will fail at the `validation` job because a strict regression test (`test_order_idempotency.py`) is executed.
+5. The test simulates a client submitting an order twice with the same `Idempotency-Key` header. Because the application currently lacks the uniqueness enforcement logic, it erroneously creates duplicate orders.
+6. The test fails, outputting: `FAILURE_REASON=IDEMPOTENCY_VIOLATION`.
+7. The intended AI remediation flow is:
+   `IDEMPOTENCY_VIOLATION → diagnose source code → create fix branch → implement application fix (e.g. adding unique constraints or service logic) → run regression tests → commit and push → open PR → wait for human review.`
+8. This should lead to `CREATE_FIX_PR`, not a blind workflow retry.

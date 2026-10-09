@@ -64,8 +64,18 @@ The only remaining task before this project is fully realized is **integrating t
 
 Currently, `.github/workflows/03-ai-failure-handler.yml` gathers all the data and creates the `payload.json`, but stops short of actually transmitting it anywhere. 
 
+## 7. Added AI-Engine Remediation Scenarios
+To support advanced testing of the AI Engine, we have implemented two new demo scenarios in a feature branch (`feat/add-failure-scenarios`):
+
+**Transient Failure (Auto-Retry)**:
+The `transient_failure_once` scenario injects a simulated infrastructure failure in `02-release.yml`. It uses `github.run_attempt` to fail exactly on Attempt 1 with `FAILURE_CLASS=TRANSIENT`. On the second attempt (when the AI Engine triggers a workflow rerun via GitHub API), it automatically passes.
+
+**Application Defect (Idempotency Bug)**:
+The `duplicate_order_failure` scenario demonstrates a real-world codebase defect. The application's `/orders/` endpoint accepts an `Idempotency-Key` header and passes it to the service, but the service logic currently *fails to enforce uniqueness* or check for existing keys before creating the order. A strict regression test (`tests/integration/test_order_idempotency.py`) runs when this scenario is selected and successfully reproduces the bug by creating duplicate orders. This tests the AI Engine's ability to diagnose a codebase defect, write a fix (like an Alembic unique constraint and service check), and create a PR.
+
 **Next Steps for the AI Assistant on the Windows Machine:**
-1.  Acquire the `AI_ENGINE_URL` and `AI_ENGINE_TOKEN` from the user.
-2.  Inject these credentials into the repository secrets.
-3.  Modify `03-ai-failure-handler.yml` to execute a `curl` request (or equivalent) that POSTs the `payload.json` directly to the AI Engine API.
-4.  Assist with any necessary networking hurdles (e.g., setting up ngrok or Cloudflare Tunnels) if the Windows machine is hosting the AI engine locally and needs to receive incoming webhooks from GitHub Actions.
+1.  The Windows AI engine is a polling engine, meaning it pulls data from GitHub rather than relying on webhooks.
+2.  Do NOT configure `AI_ENGINE_URL`, webhooks, tunnels, ngrok, or Cloudflare. The Windows engine keeps its authentication outside the repository.
+3.  The engine will monitor the generated workflow runs, parse the diagnostic metadata (like `FAILURE_STAGE` and `FAILURE_REASON`), and execute its remediation policy.
+4.  For transient failures, it will track `(workflow_run_id, run_attempt)` to ensure proper retry limits.
+5.  For codebase defects like the idempotency bug, it will diagnose the issue and push a fix PR on a branch prefixed with `ai-fix/`.

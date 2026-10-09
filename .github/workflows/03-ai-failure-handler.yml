@@ -46,17 +46,7 @@ jobs:
           echo "Generated payload:"
           cat failure_payload.json
 
-      - name: Call AI Engine API
-        env:
-          AI_ENGINE_URL: ${{ secrets.AI_ENGINE_URL }}
-          AI_ENGINE_TOKEN: ${{ secrets.AI_ENGINE_TOKEN }}
+      - name: Await Polling Engine
         run: |
-          if [ -z "$AI_ENGINE_URL" ]; then
-            echo "AI_ENGINE_URL not set, simulating API call."
-            exit 0
-          fi
-          
-          curl -X POST "$AI_ENGINE_URL" \
-            -H "Authorization: Bearer $AI_ENGINE_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d @failure_payload.json
+          echo "Payload generated and logged."
+          echo "The AI Engine will poll this workflow run, extract the payload, and perform remediation."

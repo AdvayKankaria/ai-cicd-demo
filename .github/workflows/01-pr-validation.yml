@@ -12,6 +12,8 @@ on:
         options:
           - none
           - test_failure
+          - transient_failure_once
+          - duplicate_order_failure
           - sonarqube_failure
           - fortify_failure
           - sonatype_failure
@@ -76,6 +78,10 @@ jobs:
           python-version: "3.12"
           cache: "pip"
       - run: pip install -r requirements-dev.txt
+      - name: Inject duplicate order failure
+        if: ${{ inputs.failure_scenario == 'duplicate_order_failure' || github.event.inputs.failure_scenario == 'duplicate_order_failure' }}
+        run: |
+           echo "FAILURE_SCENARIO=duplicate_order_failure" >> $GITHUB_ENV
       - name: Run Integration Tests
         run: pytest tests/integration
         env:
