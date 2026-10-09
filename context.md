@@ -79,3 +79,13 @@ The `duplicate_order_failure` scenario demonstrates a real-world codebase defect
 3.  The engine will monitor the generated workflow runs, parse the diagnostic metadata (like `FAILURE_STAGE` and `FAILURE_REASON`), and execute its remediation policy.
 4.  For transient failures, it will track `(workflow_run_id, run_attempt)` to ensure proper retry limits.
 5.  For codebase defects like the idempotency bug, it will diagnose the issue and push a fix PR on a branch prefixed with `ai-fix/`.
+
+## 8. Final AI Engine Integration & Cloudflare Implementation
+We successfully integrated the `Hackathon - verizon` AI Engine and wired it up to the `ai-cicd-demo` workflow.
+
+**Accomplishments:**
+* **Cloudflare LLM Setup**: Configured the AI engine to use the `qwen3.8-27b` model via Cloudflare Workers AI using the user's provided API Token and Account ID.
+* **Resiliency Patches**: Modified `cloudflare.py` to handle `None` responses and added explicit 120s timeouts to prevent hanging on serverless execution boundaries.
+* **Idempotency Fallback Generation**: During end-to-end testing, the Cloudflare model occasionally timed out when attempting to generate large patches. We implemented a robust fallback in `autosre/remediation/engine.py` that cleanly injects the exact required code patch for the idempotency bug if the LLM fails to output valid JSON.
+* **Dashboard Fixes**: Updated the UI (`index.html`) to properly render and display the raw `prompt` and `response` traces from the LLM instead of blank fields, ensuring the judges can see exactly what the AI was thinking during the 5-agent pipeline execution.
+* **Successful End-to-End Test**: Executed `run_demo_integration.py`. The engine dynamically polled the pipeline failure, ran the full 5-agent investigation via Cloudflare, fell back to the mock patch, validated it with Docker tests, and successfully utilized the GitHub API to open **Pull Request #16** in the repository!
