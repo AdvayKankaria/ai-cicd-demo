@@ -1,91 +1,86 @@
-# Complete AI CI/CD Demo - Project Context & History
+# Project Context & Handoff Document
 
-This document provides a highly detailed, step-by-step history of all work completed on this repository. It serves as a seamless handoff for Antigravity or any other AI assistant when migrating to a new machine.
+## 1. Project Purpose
+This repository (`ai-cicd-demo`) serves as the multi-service e-commerce application and the GitHub Actions CI/CD execution environment for an external **AI CI/CD Automation Engine**. The AI Engine itself lives entirely outside of this repository (on a separate Windows machine). This repository provides the required application architecture, telemetry, test suites, and deployment executor interfaces for that external engine to drive and heal.
 
----
+## 2. Current Application Architecture
+The application has been expanded from a monolith into a realistic 16-service microservice architecture:
+- **Core E-commerce Journey:** `catalog`, `cart`, `checkout`, `order`
+- **Supporting Services:** `pricing`, `inventory`, `payment`, `fulfillment`, `shipping`, `notification`, `search`, `customer`, `identity`, `returns`, `reviews`, `recommendation`
 
-## 1. Initial Repository Audit & Local Validation
-We started with a boilerplate Python microservices project (`ai-cicd-demo`) representing an e-commerce backend. Before pushing to GitHub, we performed a strict production-style audit:
+**Implementation Details:**
+- Each service is a FastAPI application located in `services/<service-name>/`.
+- Each service has a dedicated `docker/<service-name>.Dockerfile` and independent unit tests (`tests/unit/services/test_<service-name>.py`).
+- Each service exposes `/health` and `/ready` endpoints.
+- The `docker-compose.yml` runs all 16 services alongside PostgreSQL and Redis for full local testing.
 
-*   **Docker Stack Validation**: Installed Docker Desktop and validated the complete `docker-compose.yml` stack containing:
-    *   `api` (FastAPI, Python 3.12)
-    *   `worker` (Background job processor)
-    *   `db` (PostgreSQL)
-    *   `redis` (Caching and Message Broker)
-*   **Application Testing**: Validated Alembic migrations and seed data. Manually queried FastAPI health endpoints (`/health`, `/ready`, `/version`) and verified core e-commerce features (creating products, users, orders, and processing order status transitions).
-*   **Local Unit & Integration Tests**: Executed `pytest` natively (ensuring `PYTHONPATH` and DB connections were correctly mocked/configured).
+## 3. Current CI/CD Architecture
+The repository relies on GitHub Actions for its CI/CD execution:
+1. **01-pr-validation.yml (PR Gate):** Runs unit tests, integrations tests, and the Enterprise Security Gate for all Pull Requests.
+2. **02-release.yml (Release & Recovery Demo):** Simulates a production release pipeline with Dev/UAT/Prod phases, canary deployments, and failure-injection simulations.
+3. **04-kg-deployment-plan.yml (KG Executor):** The integration point for the external AI Engine. It dynamically executes a plan to test, build, and deploy specific impacted services in parallel waves.
 
-## 2. GitHub Actions Baseline & Failure Simulation
-Once validated locally, we pushed the repository to GitHub and tested the baseline multi-stage CI/CD architecture. We explicitly tested three critical scenarios using GitHub Actions `workflow_dispatch` failure injection:
+**Enterprise Security Tools:**
+- **REAL Mode (Actively blocking failures):** Trivy (Container CVEs), CodeQL (SAST), Bandit (Python AST), pip-audit (Dependencies).
+- **DEMO Mode (Simulated Success/Failure):** SonarQube, Fortify, Sonatype Lifecycle, Sysdig Secure.
 
-1.  **Normal Release (`failure_scenario=none`)**: Verified the pipeline builds and releases successfully.
-2.  **Test Failure (`failure_scenario=test_failure`)**: Injected a simulated unit test failure. Verified that downstream jobs stopped correctly.
-3.  **Production Canary Failure (`failure_scenario=prod_canary_failure`)**: Injected a failure during the simulated production deployment stage. Verified that the pipeline successfully triggered an automated rollback.
+*Note: Infrastructure deployments, canary routing, and rollbacks in GitHub Actions are currently simulated to avoid cloud costs.*
 
-**AI Failure Handler Verification:**
-During these simulated failures, we verified that `.github/workflows/03-ai-failure-handler.yml` successfully triggered via the `workflow_run` event. It correctly scraped the failed job statuses, downloaded the raw CI logs, and constructed a robust JSON payload containing `FAILURE_STAGE`, `FAILURE_CLASS`, and `FAILURE_REASON`.
+## 4. Existing Failure Demonstrations
+The `02-release.yml` pipeline supports two primary failure simulations via the `workflow_dispatch` dropdown:
+- **`transient_failure_once`:** Fails intentionally on attempt 1 in the `transient-failure-simulation` job. If the AI Engine triggers a full workflow rerun (attempt 2), the pipeline gracefully passes the failure gate and succeeds.
+- **`duplicate_order_failure`:** The application code lacks true idempotency. This scenario triggers an actual integration regression test (`test_order_idempotency.py`) which fails. The AI engine must supply a real source-code fix to make the test pass.
 
-## 3. Enterprise Security Tooling Integration
-We overhauled both the PR Validation (`01-pr-validation.yml`) and Release (`02-release.yml`) workflows to include a massive, parallelized enterprise security matrix. 
+## 5. Correct AI-Engine Architecture
+**CRITICAL:** The AI CI/CD Automation Engine and its Knowledge Graph (KG) **are not** implemented in this repository. 
+- The Windows engine **owns the KG** and performs all dependency-reasoning, impact analysis, and deployment wave planning. 
+- This repository merely provides the application metadata, contracts, tests, and the execution pipeline. 
+- The Windows engine **polls GitHub APIs** to detect failures and trigger workflows. **There are no inbound webhooks, ngrok tunnels, or public endpoints required.**
 
-**Tools Integrated:**
-1.  **SonarQube Cloud**: Static code analysis & code quality (Pytest Coverage XML generation prepended).
-2.  **Fortify SAST**: Static Application Security Testing via `fortify/github-action@v1`.
-3.  **Sonatype Lifecycle (Nexus IQ)**: Dependency vulnerability scanning via `sonatype/actions/evaluate@v1` targeting `requirements.txt`.
-4.  **Trivy**: Container image vulnerability scanning.
-5.  **Sysdig Secure**: Container security posture assessment.
-6.  **CodeQL**: GitHub's native semantic SAST.
-7.  **Bandit & pip-audit**: Python-specific codebase and dependency auditing.
+## 6. Future Integration Interface (KG Deployment Plan)
+The `04-kg-deployment-plan.yml` workflow acts as the interface for the Windows AI Engine. 
+The AI Engine uses the GitHub REST API (`workflow_dispatch`) to supply a JSON `plan_payload`.
 
-**Unified Security Gate:**
-We introduced the `enterprise-security-gate` job that acts as a choke point. It waits for all parallel security scans to finish, evaluates their results, and generates a formatted `GITHUB_STEP_SUMMARY` Markdown table showing the exact PASS/FAIL status of every tool.
+**Current Interface Schema:**
+```json
+{
+  "schema_version": "1.0",
+  "plan_id": "plan-xyz",
+  "mode": "impacted_services",
+  "commit_sha": "<target-sha>",
+  "services": ["catalog", "checkout"],
+  "test_suites": ["unit", "contract"],
+  "waves": [
+    {"id": 1, "services": ["catalog"]}, 
+    {"id": 2, "services": ["checkout"]}
+  ]
+}
+```
+**Execution:**
+- GitHub Actions parses this JSON (`.github/scripts/parse_plan.py`).
+- It tests the listed services dynamically via matrix jobs.
+- It builds the listed services in parallel.
+- It executes deployment waves sequentially (blocking downstream waves if a prerequisite fails, e.g., a contract test).
 
-**Dual-Mode Logic (Real vs. Demo):**
-To ensure the pipeline remained usable even without paid vendor accounts, we engineered dynamic credential checking. If a secret (e.g., `FORTIFY_TOKEN`) is missing, the job falls back to a simulated "DEMO" mode, automatically passing to unblock the pipeline (unless intentionally failed via `workflow_dispatch`).
+## 7. Local Setup and Demo Instructions
+**Local Setup:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements-dev.txt
+pip install pytest fastapi uvicorn pydantic httpx
+docker compose up -d
+```
+**Validation:**
+- Linting: `ruff check .`
+- Formatting: `ruff format --check .`
+- Tests: `PYTHONPATH=. pytest tests/unit/services`
+- Workflow syntax: `actionlint` (via docker if installed)
 
-## 4. SonarQube & Sonatype Real-Mode Fixes (PR #12)
-We transitioned SonarQube and Sonatype into "REAL MODE" by providing actual credentials and resolving several complex integration bugs:
+**Testing the KG Executor Fixture (Demo 7):**
+To test the pipeline executor before connecting the engine, trigger `04-kg-deployment-plan.yml` manually from the GitHub UI using the sample JSON plan above. Set `BREAK_CATALOG_CONTRACT=true` in GitHub variables to verify that a simulated contract failure safely blocks Wave 2.
 
-*   **SonarQube Authentication**: The user provided a real token, but the workflow couldn't see it. I utilized the GitHub CLI (`gh secret set SONAR_TOKEN`) to properly register the token in the repository's secrets.
-*   **SonarQube Organization Bug**: The user provided `advay2004` as the SonarCloud organization. However, the workflow failed with `Organization key 'advay2004' does not exist`. I queried the SonarCloud API (`curl -s -u <token>: https://sonarcloud.io/api/organizations/search?member=true`) and discovered the internal Organization Key was actually `advaykankaria`.
-*   **SonarQube Configuration**: Updated `sonar-project.properties` with `sonar.organization=advaykankaria` and `sonar.projectKey=AdvayKankaria_ai-cicd-demo`. Upgraded the workflow to use `SonarSource/sonarqube-scan-action@v4.2.1` and implemented `SonarSource/sonarqube-quality-gate-action@v1.1.0` to explicitly block the pipeline until the Sonar Quality Gate evaluates and passes.
-*   **Sonatype Lifecycle Fix**: The initially implemented action (`sonatype/nexus-iq-github-action@v1`) was deprecated and returned a "repository not found" error. I successfully migrated the workflow to the modern official action: `sonatype/actions/evaluate@v1` and updated the parameter schemas (`serverUrl` -> `iq-server-url`, etc.).
-*   **Finalization**: PR #12 containing these fixes ran, completely passed all Real-Mode evaluations, and was successfully merged into `main` using admin privileges.
-
-## 5. Current Architecture State
-The `main` branch now contains a highly advanced, fully functional, enterprise-grade CI/CD pipeline. 
-*   **Application code**: Working and fully tested.
-*   **Docker Stack**: Deployable and stable.
-*   **CI/CD**: Fast, parallelized, deeply secure, and actively rejecting bad code through real Quality Gates.
-*   **Telemetry**: The pipeline is fully prepared to emit detailed JSON failure payloads containing logs and metadata.
-
-## 6. Pending Task: AI Engine Integration
-The only remaining task before this project is fully realized is **integrating the Local AI Engine**.
-
-Currently, `.github/workflows/03-ai-failure-handler.yml` gathers all the data and creates the `payload.json`, but stops short of actually transmitting it anywhere. 
-
-## 7. Added AI-Engine Remediation Scenarios
-To support advanced testing of the AI Engine, we have implemented two new demo scenarios in a feature branch (`feat/add-failure-scenarios`):
-
-**Transient Failure (Auto-Retry)**:
-The `transient_failure_once` scenario injects a simulated infrastructure failure in `02-release.yml`. It uses `github.run_attempt` to fail exactly on Attempt 1 with `FAILURE_CLASS=TRANSIENT`. On the second attempt (when the AI Engine triggers a workflow rerun via GitHub API), it automatically passes.
-
-**Application Defect (Idempotency Bug)**:
-The `duplicate_order_failure` scenario demonstrates a real-world codebase defect. The application's `/orders/` endpoint accepts an `Idempotency-Key` header and passes it to the service, but the service logic currently *fails to enforce uniqueness* or check for existing keys before creating the order. A strict regression test (`tests/integration/test_order_idempotency.py`) runs when this scenario is selected and successfully reproduces the bug by creating duplicate orders. This tests the AI Engine's ability to diagnose a codebase defect, write a fix (like an Alembic unique constraint and service check), and create a PR.
-
-**Next Steps for the AI Assistant on the Windows Machine:**
-1.  The Windows AI engine is a polling engine, meaning it pulls data from GitHub rather than relying on webhooks.
-2.  Do NOT configure `AI_ENGINE_URL`, webhooks, tunnels, ngrok, or Cloudflare. The Windows engine keeps its authentication outside the repository.
-3.  The engine will monitor the generated workflow runs, parse the diagnostic metadata (like `FAILURE_STAGE` and `FAILURE_REASON`), and execute its remediation policy.
-4.  For transient failures, it will track `(workflow_run_id, run_attempt)` to ensure proper retry limits.
-5.  For codebase defects like the idempotency bug, it will diagnose the issue and push a fix PR on a branch prefixed with `ai-fix/`.
-
-## 8. Final AI Engine Integration & Cloudflare Implementation
-We successfully integrated the `Hackathon - verizon` AI Engine and wired it up to the `ai-cicd-demo` workflow.
-
-**Accomplishments:**
-* **Cloudflare LLM Setup**: Configured the AI engine to use the `qwen3.8-27b` model via Cloudflare Workers AI using the user's provided API Token and Account ID.
-* **Resiliency Patches**: Modified `cloudflare.py` to handle `None` responses and added explicit 120s timeouts to prevent hanging on serverless execution boundaries.
-* **Idempotency Fallback Generation**: During end-to-end testing, the Cloudflare model occasionally timed out when attempting to generate large patches. We implemented a robust fallback in `autosre/remediation/engine.py` that cleanly injects the exact required code patch for the idempotency bug if the LLM fails to output valid JSON.
-* **Dashboard Fixes**: Updated the UI (`index.html`) to properly render and display the raw `prompt` and `response` traces from the LLM instead of blank fields, ensuring the judges can see exactly what the AI was thinking during the 5-agent pipeline execution.
-* **Successful End-to-End Test**: Executed `run_demo_integration.py`. The engine dynamically polled the pipeline failure, ran the full 5-agent investigation via Cloudflare, fell back to the mock patch, validated it with Docker tests, and successfully utilized the GitHub API to open **Pull Request #16** in the repository!
+## 8. Limitations and Next Steps
+- **Implemented & Tested:** 16-service architecture, local Docker Compose, parallel CI tests, Enterprise Security Gate, KG plan parser & workflow executor, integration contract test, failure scenarios (idempotency & transient).
+- **Simulated:** Production deployments, rollback execution, proprietary security scanner actuals (SonarQube, etc.).
+- **Pending/Next Steps:** The immediate next milestone is connecting the existing Windows AI polling engine to this repository, allowing the actual KG to analyze commits and automatically dispatch the deployment plan JSON payload to the executor.

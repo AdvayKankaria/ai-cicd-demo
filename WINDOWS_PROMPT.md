@@ -2,12 +2,16 @@ CONTINUATION PROMPT — AI CI/CD AUTOMATION ENGINE ON WINDOWS
 We are continuing my existing AI CI/CD Automation Engine project on my Windows laptop. Previous repository and workflow work was performed on my Mac, but my actual AI engine already exists on this Windows machine.
 Your first priority is to inspect and integrate with my existing AI engine, not build a new one.
 
-1. Existing GitHub project
+1. Existing GitHub project & Architecture
 Repository: https://github.com/AdvayKankaria/ai-cicd-demo
-Pull request: https://github.com/AdvayKankaria/ai-cicd-demo/pull/14
-Feature branch: feat/add-failure-scenarios
+Feature branch: feat/kg-pipeline-executor
 
-The latest report from my previous session states that PR Validation run 37876390393 completed successfully, including Ruff, unit tests, integration tests and configured security checks. Verify the live PR status and latest checks instead of assuming this report is still current.
+**CRITICAL NOTE ON KNOWLEDGE GRAPH (KG):**
+My existing AI CI/CD Automation Engine on Windows *already* owns the Knowledge Graph (KG) and performs all impact analysis and dependency reasoning. Do not build another KG, graph database, or dependency logic. Your task is to use the existing KG in the Windows engine to generate a deployment plan and dispatch it via the GitHub API to the newly created `04-kg-deployment-plan.yml` workflow.
+
+The latest pipeline work has been merged or is staged on `feat/kg-pipeline-executor`. Ensure you pull the latest branch.
+
+The repository contains two primary demonstration modes:
 
 PR #14 contains two intended demonstration scenarios:
 
