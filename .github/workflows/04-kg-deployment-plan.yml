@@ -42,7 +42,7 @@ jobs:
           python-version: '3.12'
       - name: Run Tests
         run: |
-          pip install pytest fastapi uvicorn pydantic httpx
+          pip install -r requirements-dev.txt
           PYTHONPATH=. pytest tests/unit/services/test_${{ matrix.service }}.py
           
       - name: Run Contract Tests
