@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inject build failure
         if: ${{ inputs.failure_scenario == 'build_failure' }}
         run: exit 1
@@ -105,7 +105,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup Python
@@ -150,7 +150,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inject Fortify failure
         if: ${{ inputs.failure_scenario == 'fortify_failure' || github.event.inputs.failure_scenario == 'fortify_failure' }}
         run: |
@@ -179,7 +179,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inject Sonatype failure
         if: ${{ inputs.failure_scenario == 'sonatype_failure' || github.event.inputs.failure_scenario == 'sonatype_failure' }}
         run: |
@@ -214,7 +214,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -231,7 +231,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -250,7 +250,7 @@ jobs:
     outputs:
       image_digest: ${{ steps.push.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -349,7 +349,7 @@ jobs:
     needs: [enterprise-security-gate, publish]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inject deployment failure
         if: ${{ inputs.failure_scenario == 'deployment_failure' }}
         run: exit 1
@@ -371,7 +371,7 @@ jobs:
     needs: [dev-deployment, publish]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Deploy UAT
         run: |
           echo "Deploying artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
@@ -401,7 +401,7 @@ jobs:
     needs: [prod-approval, publish]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Deploy Canary
         run: echo "Deploying canary ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }}"
       - name: Check canary failure
@@ -413,7 +413,7 @@ jobs:
     needs: [prod-canary, publish]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Promote to Production
         run: echo "Promoting artifact ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api@${{ needs.publish.outputs.image_digest }} to 100%"
 

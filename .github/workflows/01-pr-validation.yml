@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -93,7 +93,7 @@ jobs:
     needs: [integration-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup Python
@@ -138,7 +138,7 @@ jobs:
     needs: [integration-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inject Fortify failure
         if: ${{ inputs.failure_scenario == 'fortify_failure' || github.event.inputs.failure_scenario == 'fortify_failure' }}
         run: |
@@ -167,7 +167,7 @@ jobs:
     needs: [integration-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Inject Sonatype failure
         if: ${{ inputs.failure_scenario == 'sonatype_failure' || github.event.inputs.failure_scenario == 'sonatype_failure' }}
         run: |
@@ -202,7 +202,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -219,7 +219,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -231,7 +231,7 @@ jobs:
     needs: [sonarqube, fortify, sonatype, security, codeql]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Docker Build Config
         run: docker compose config
       - name: Docker Build (dry run)
@@ -241,7 +241,7 @@ jobs:
     needs: [docker]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build local image for Trivy
         run: docker build -t temp-api -f docker/api.Dockerfile .
       - name: Trivy Scan
@@ -258,7 +258,7 @@ jobs:
     needs: [docker]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build local image for Sysdig
         run: docker build -t temp-api -f docker/api.Dockerfile .
       - name: Inject Sysdig failure

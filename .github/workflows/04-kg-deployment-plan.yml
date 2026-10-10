@@ -20,7 +20,7 @@ jobs:
       wave_2_services: ${{ steps.parse.outputs.wave_2_services }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         
       - name: Parse and Validate Plan
         id: parse
@@ -35,7 +35,7 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.parse-plan.outputs.services) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -61,7 +61,7 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.parse-plan.outputs.services) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Docker Image
         run: |
           docker build -t ecom-${{ matrix.service }}:${{ github.sha }} -f docker/${{ matrix.service }}.Dockerfile .
