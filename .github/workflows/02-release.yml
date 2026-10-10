@@ -266,7 +266,7 @@ jobs:
           push: true
           tags: ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api:${{ github.sha }}
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/advaykankaria/ai-cicd-demo/ai-cicd-demo-api
           subject-digest: ${{ steps.push.outputs.digest }}
