@@ -77,7 +77,7 @@ jobs:
             echo "FAILURE_STAGE=TRANSIENT_FAILURE_SIMULATION"
             echo "FAILURE_CLASS=TRANSIENT"
             echo "FAILURE_REASON=TRANSIENT_FAILURE_ONCE"
-            echo "::error::Simulating a transient infrastructure failure on attempt 1."
+            echo "::error::Network connection timeout while attempting to reach remote registry."
             exit 1
           else
             echo "TRANSIENT_FAILURE_RECOVERED=true"
